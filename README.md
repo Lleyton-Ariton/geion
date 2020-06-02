@@ -1,2 +1,5 @@
-# geion
-A simple library that uses genetic algorithms for feature selection optimization
+# Geion - Genetic Feature Optimization
+
+A simple ttolkit that uses genetic algorithms for automated feature selection and feature optimization.
+
+

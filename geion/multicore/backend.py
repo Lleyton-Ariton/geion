@@ -1,4 +1,9 @@
+import os
+import sys
+import warnings
+
 import ray
+import multiprocessing
 
 from typing import *
 from geion.genetic.individual import Individual
@@ -65,12 +70,26 @@ def kill_population_actors(population_handles: List) -> None:
     return None
 
 
-@ray.remote
-class Individual:
+def partitioned_run(wrapped_population: List, x_train: Any, y_train: Any, x_test: Any, y_test: Any,
+                    kill: bool=False) -> List[Individual]:
 
-    def __init__(self, base_value: int):
-        self.base_value = base_value
+    def partition(population: List, cpus: int) -> List:
 
-    def update_value(self, new_value: int):
-        self.base_value = new_value
-        return self
+        for i in range(0, len(population), cpus):
+            yield population[i:i + cpus]
+
+    total_population = []
+    for partition in partition(wrapped_population, (multiprocessing.cpu_count() - 1)):
+        total_population.extend(run_population(partition, x_train, y_train, x_test, y_test))
+        if kill:
+            kill_population_actors(partition)
+
+    unpin_objects([x_train, x_test, y_train, y_test])
+
+    return total_population
+
+
+def silence_warnings():
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+        os.environ["PYTHONWARNINGS"] = "ignore"

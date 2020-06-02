@@ -1,32 +1,18 @@
-import os
 import sys
 import warnings
 
-import ray
 import numpy as np
-import matplotlib.pyplot as plt
 
 from geion.genetic.individual import *
 from geion.multicore import *
 
-from sklearn import preprocessing
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.neural_network import MLPClassifier
-from sklearn.exceptions import ConvergenceWarning
-# from sklearn.utils.validation import check_is_fitted
 
-
-if not sys.warnoptions:
-    warnings.simplefilter("ignore")
-    os.environ["PYTHONWARNINGS"] = "ignore"
-
-
-class FeatureOptimizer:  # Currently broken due to knew Individual implementations
+class FeatureOptimizer:
 
     def __init__(self, population_size: int, target: Union[int, float], model: Any, x_train: pd.DataFrame,
-                 y_train: pd.DataFrame, x_test: Any, y_test: Any, generation_limit: int=25, mutation_rate: float=0.1,
+                 y_train: pd.DataFrame, x_test: Any, y_test: Any, generation_limit: int=25, mutation_rate: float=None,
                  elitist_slice: float=0.1, periodic_saves: bool=False, keep_history: bool=False,
-                 print_metrics: bool=True, seed: int=False):
+                 print_metrics: bool=True, seed: int=False, silence_warnings: bool=True):
 
         self._population_size = population_size
         self._target = target
@@ -39,7 +25,11 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
         self.x_test, self.y_test = x_test, y_test
 
         self.generation_limit = generation_limit
+
         self._mutation_rate = mutation_rate
+        if self._mutation_rate is None:
+            self._mutation_rate = 1/self._population_size
+
         self._elitist_slice = elitist_slice
         self.periodic_saves = periodic_saves
 
@@ -48,6 +38,7 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
             self._history = []
 
         self.print_metrics = print_metrics
+        self.silence_warnings = silence_warnings
 
         self._seed = seed
         if self._seed:
@@ -71,7 +62,8 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
                                                    genome=Genome(init_genome=genome),
                                                    **self.model.get_model_kwargs()))
             return None
-        raise ValueError('The population is not empty. Wipe the current population to initiate a new one.')
+        raise ValueError('The population is not empty.'
+                         ' Wipe the current population to initiate a new one.')
 
     def set_population_size(self, new_size: int) -> None:
         if isinstance(new_size, int):
@@ -156,7 +148,8 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
         return self._population
 
     def __deprecated_parallel_training(self) -> List:
-        warnings.warn('This parallel training method is not supposed to be used. Use parallel_training method instead')
+        warnings.warn('This parallel training method is not supposed to be used. '
+                      'Use parallel_training method instead')
 
         @ray.remote
         def _parallel_fit_wrapper(individual: Individual, _x_train: Any, _y_train: Any, _x_test: Any, _y_test: Any):
@@ -180,14 +173,14 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
         x_train_id, y_train_id = ray.put(self.x_train), ray.put(self.y_train)
         x_test_id, y_test_id = ray.put(self.x_test), ray.put(self.y_test)
 
-        trained_population = run_population(wrapped_population, x_train_id, y_train_id, x_test_id, y_test_id)
+        trained_population = partitioned_run(wrapped_population, x_train_id, y_train_id, x_test_id, y_test_id)
         unpin_objects(x_train_id, y_train_id, x_test_id, y_test_id)
 
         return trained_population
 
     def run_optimization(self, parallel: bool=False) -> Individual:
-        if parallel:
-            ray.init()
+        if self.silence_warnings:
+            silence_warnings()
 
         generation = 0
         target_reached = False
@@ -196,7 +189,8 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
         while not target_reached and generation <= self.generation_limit:
 
             if parallel:
-                population = self.parallel_training()
+                with RayManager():
+                    population = self.parallel_training()
 
             else:
                 population = self.get_population()
@@ -210,8 +204,6 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
             self._history.append(population[0])
 
             if population[0].fitness >= self.target:
-                if ray.is_initialized():
-                    ray.shutdown()
                 return population[0]
 
             new_generation = []
@@ -238,7 +230,5 @@ class FeatureOptimizer:  # Currently broken due to knew Individual implementatio
                 sys.stdout.write(f'Generation: {generation}\t'
                                  f'Fitness: {self.get_population()[0].fitness}\t\n'
                                  f'Genome: {self.get_population()[0].chromosome}\n')
-        if ray.is_initialized():
-            ray.shutdown()
 
         return self.get_population()[0]
