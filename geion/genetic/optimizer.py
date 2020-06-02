@@ -12,7 +12,8 @@ class FeatureOptimizer:
     def __init__(self, population_size: int, target: Union[int, float], model: Any, x_train: pd.DataFrame,
                  y_train: pd.DataFrame, x_test: Any, y_test: Any, generation_limit: int=25, mutation_rate: float=None,
                  elitist_slice: float=0.1, periodic_saves: bool=False, keep_history: bool=False,
-                 print_metrics: bool=True, seed: int=False, silence_warnings: bool=True):
+                 print_metrics: bool=True, seed: int=False, print_warnings: bool=False, print_progress_bar: bool=True,
+                 **ray_init_params):
 
         self._population_size = population_size
         self._target = target
@@ -38,7 +39,10 @@ class FeatureOptimizer:
             self._history = []
 
         self.print_metrics = print_metrics
-        self.silence_warnings = silence_warnings
+        self.print_warnings = print_warnings
+        self.print_progress_bar = print_progress_bar
+
+        self.ray_init_params = ray_init_params
 
         self._seed = seed
         if self._seed:
@@ -173,13 +177,14 @@ class FeatureOptimizer:
         x_train_id, y_train_id = ray.put(self.x_train), ray.put(self.y_train)
         x_test_id, y_test_id = ray.put(self.x_test), ray.put(self.y_test)
 
-        trained_population = partitioned_run(wrapped_population, x_train_id, y_train_id, x_test_id, y_test_id)
+        trained_population = partitioned_run(wrapped_population, x_train_id, y_train_id,
+                                             x_test_id, y_test_id, print_progress_bar=self.print_progress_bar)
         unpin_objects(x_train_id, y_train_id, x_test_id, y_test_id)
 
         return trained_population
 
     def run_optimization(self, parallel: bool=False) -> Individual:
-        if self.silence_warnings:
+        if not self.print_warnings:
             silence_warnings()
 
         generation = 0
@@ -189,7 +194,7 @@ class FeatureOptimizer:
         while not target_reached and generation <= self.generation_limit:
 
             if parallel:
-                with RayManager():
+                with RayManager(**self.ray_init_params):
                     population = self.parallel_training()
 
             else:

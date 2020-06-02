@@ -1,5 +1,7 @@
-# Geion - Genetic Feature Optimization
+#Geion - Genetic Feature Optimization
 
-A simple ttolkit that uses genetic algorithms for automated feature selection and feature optimization.
+A simple toolkit that uses genetic algorithms for automated feature selection and feature optimization.
+
+
 
 

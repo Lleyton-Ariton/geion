@@ -4,6 +4,7 @@ import warnings
 
 import ray
 import multiprocessing
+from alive_progress.progress import alive_bar
 
 from typing import *
 from geion.genetic.individual import Individual
@@ -71,7 +72,7 @@ def kill_population_actors(population_handles: List) -> None:
 
 
 def partitioned_run(wrapped_population: List, x_train: Any, y_train: Any, x_test: Any, y_test: Any,
-                    kill: bool=False) -> List[Individual]:
+                    kill: bool=False, print_progress_bar: bool=True) -> List[Individual]:
 
     def partition(population: List, cpus: int) -> List:
 
@@ -79,10 +80,19 @@ def partitioned_run(wrapped_population: List, x_train: Any, y_train: Any, x_test
             yield population[i:i + cpus]
 
     total_population = []
-    for partition in partition(wrapped_population, (multiprocessing.cpu_count() - 1)):
-        total_population.extend(run_population(partition, x_train, y_train, x_test, y_test))
-        if kill:
-            kill_population_actors(partition)
+
+    if multiprocessing.cpu_count() >= 2:
+        partitions = partition(wrapped_population, (multiprocessing.cpu_count() - 1))
+    else:
+        partitions = partition(wrapped_population, 1)
+
+    with alive_bar(len(partitions)) as bar:
+        for partition in partitions:
+            total_population.extend(run_population(partition, x_train, y_train, x_test, y_test))
+            if kill:
+                kill_population_actors(partition)
+            if print_progress_bar:
+                bar()
 
     unpin_objects([x_train, x_test, y_train, y_test])
 
