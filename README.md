@@ -5,15 +5,15 @@ A simple toolkit that uses genetic algorithms for automated feature selection an
 ### Contents
 
 - [Usage](#Usage)
- - [Installation](#Installation)
- - Example code
+    - [Installation](#Installation)
+    - Example code
 - Explanation
- - Genetic Algorithms
- - Feature optimization with GA
+    - Genetic Algorithms
+    - Feature optimization with GA
 - Documentation
- - FeatureOptimizer
- - Genome
- - Individual
+    - FeatureOptimizer
+    - Genome
+    - Individual
 
 # Usage
 
