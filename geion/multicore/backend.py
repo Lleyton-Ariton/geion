@@ -82,13 +82,11 @@ def partitioned_run(wrapped_population: List, x_train: Any, y_train: Any, x_test
     total_population = []
 
     if multiprocessing.cpu_count() >= 2:
-        num_groups = multiprocessing.cpu_count() - 1
-        partitions = partition(wrapped_population, num_groups)
+        partitions = partition(wrapped_population, (multiprocessing.cpu_count() - 1))
     else:
-        num_groups = 1
         partitions = partition(wrapped_population, 1)
 
-    with alive_bar(num_groups) as bar:
+    with alive_bar(round(len(wrapped_population) / (multiprocessing.cpu_count() - 1))) as bar:
         for partition in partitions:
             total_population.extend(run_population(partition, x_train, y_train, x_test, y_test))
             if kill:

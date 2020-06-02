@@ -1,6 +1,7 @@
 import sys
 import warnings
 
+import ray
 import numpy as np
 
 from geion.genetic.individual import *
@@ -234,6 +235,6 @@ class FeatureOptimizer:
             if self.print_metrics:
                 sys.stdout.write(f'Generation: {generation}\t'
                                  f'Fitness: {self.get_population()[0].fitness}\t\n'
-                                 f'Genome: {self.get_population()[0].chromosome}\n')
+                                 f'Genome: {self.get_population()[0].chromosome}\n\n')
 
         return self.get_population()[0]
