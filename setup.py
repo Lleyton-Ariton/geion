@@ -5,7 +5,7 @@ with open('README.md', 'r') as readme:
 
 setuptools.setup(
     name='geion',
-    version='0.0.1',
+    version='0.0.2',
     author='Lleyton Ariton',
     author_email='lleyton.ariton@gmail.com',
     description='Genetic Feature Optimization',
