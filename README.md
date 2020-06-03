@@ -101,8 +101,8 @@ optimizer = FeatureOptimizer(20, 0.8, Individual(MLPClassifier, genome=[0, 1], h
 
 # Initializing FeatureOptimizer with a population of 20 MLPClassifiers, each with hidden features equal to the number of input features; goal accuracy of 80%; dummy genome must be given (will not influence anything); generation_limit of 50; ignore all logging unless fatal
 with warnings.catch_warnings(record=True):  # Sklearn models raise ConvergenceWarnings and pollutes terminal, thus silencing warnings
-	baseline = MLPClassifier(hidden_layer_size=len(x_data.columns))
-	baseline.fit(x_train, y_train)  # Setting up MLPClassifier baseline
+	baseline = MLPClassifier(hidden_layer_size=len(x_data.columns)).
+	baseline.fit(x_train, y_train).  # Setting up MLPClassifier baseline
 	
 	base_score = cross_val_score(baseline, x_test, y_test).mean()
 	print(f'Baseline: {base_score}')
